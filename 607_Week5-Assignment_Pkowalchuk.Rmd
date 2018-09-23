@@ -1,0 +1,87 @@
+---
+title: "Data607 - Week 5 Assignment"
+author: "Peter Kowalchuk"
+date: "9/23/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Tidying and Transforming Data
+
+```{r}
+library(tidyr)
+library(dplyr)
+```
+
+
+###1) CSV Data
+
+Data was entered in a csv file called flightsInfo.csv using the wide format given
+
+###2) Read CSV into R, tidy and transform data
+
+CSV read into R
+```{r}
+dfWide<-read.csv(file="flightsInfo.csv")
+dfWide
+tbWide<-tbl_df(dfWide)
+tbWide
+```
+
+We reshape the data by going from a wide table to a tidy table with variables as columns and observations as rows
+
+```{r}
+tbTidy<-gather(dfWide,"Destinations","Flights",3:7)
+tbTidy
+```
+
+We then group the data by airline and delayed fligths
+
+```{r}
+tbTidyGroupAir<-group_by(tbTidy,Airline,Delayed)
+tbTidyGroupAir
+```
+
+###3) Analysis comparing arrival delays for both airlines
+
+Using the tidy table with groups we can compare both airlines arrival times performing a summary. From here we can see how AM West has more delayed flights than Alaska, but also has more on time. Overall AM West has more flights than Alaska, so a better way to do this comparison is using ratios.
+
+```{r}
+summarise(tbTidyGroupAir,totalFligths=sum(Flights))
+```
+
+Before continuing, we can point out how all these operations can be done using pipies, which will be the method used going forward
+
+```{r}
+dfWide %>% tbl_df() %>% gather("Destinations","Flights",3:7) %>% group_by(Airline) %>% summarise(totalFligths=sum(Flights))
+dfWide %>% tbl_df() %>% gather("Destinations","Flights",3:7) %>% group_by(Airline,Delayed) %>% summarise(totalFligths=sum(Flights))
+```
+
+To calculate ratios we can mutate our final table from before to add a ratio column
+
+```{r}
+dfWide %>% tbl_df() %>% gather("Destinations","Flights",3:7) %>% group_by(Airline,Delayed) %>% summarise(totalFligths=sum(Flights)) %>% mutate(Ratio=totalFligths/sum(totalFligths))
+```
+
+From the ratio shown above we discover that Alaska has slightly more delayed flights, with 13.3% of its flights being delayed against 10.9% of AM West flights being delayed.
+
+###1) Data from SQL databse
+
+Instead of loading the data into R from a csv file, we could have also created a table in MySQL and imported it into R. 
+
+```{r}
+library("RMySQL")
+mydb<-dbConnect(MySQL(),user='root',password='123',dbname='flightDelays',host='localhost')
+dbListTables(mydb)
+dbListFields(mydb,'tableWide')
+tableWideDataQuery<-dbSendQuery(mydb,'select * from tableWide')
+dfTableDbWide<-fetch(tableWideDataQuery,n=-1)
+dfTableDbWide
+tbWide<-tbl_df(dfTableDbWide)
+tbWide
+```
+
+The resulting tbWide table is the same table we obtained from the CSV import. The same analysis can be performed using this table as the starting point.
